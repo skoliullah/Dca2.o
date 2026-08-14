@@ -1,0 +1,6 @@
+Flask
+gunicorn
+pandas
+yfinance
+plotly
+flask-basicauth
