@@ -3,125 +3,161 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gold AI Arbitrage Dashboard</title>
-    <style>
-        :root { --neon-blue: #00f2ff; --dark-bg: #0a0e14; }
-        body { background: var(--dark-bg); color: #e0e0e0; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 15px; }
-        .dashboard { max-width: 600px; margin: auto; }
-        .card { 
-            background: linear-gradient(145deg, #161b22, #0d1117);
-            padding: 20px; border-radius: 15px;
-            box-shadow: 0 0 15px rgba(0, 242, 255, 0.15);
-            border: 1px solid #30363d; margin-bottom: 20px;
-        }
-        h1 { color: var(--neon-blue); text-align: center; font-size: 22px; text-transform: uppercase; letter-spacing: 2px; }
-        .label { color: #8b949e; font-size: 13px; margin-bottom: 5px; }
-        .value { font-size: 24px; font-weight: bold; color: #ffffff; margin-bottom: 15px; }
-        .highlight { color: var(--neon-blue); }
-        .buy-zone { background: rgba(0, 255, 157, 0.05); border: 1px solid #00ff9d; padding: 12px; border-radius: 10px; text-align: center; color: #00ff9d; margin-bottom: 20px;}
-        .admin-badge { background: #ff4d4d; color: white; padding: 5px 10px; border-radius: 5px; font-size: 12px; float: right; text-decoration: none;}
-        .viewer-badge { background: #30363d; color: #8b949e; padding: 5px 10px; border-radius: 5px; font-size: 12px; float: right; text-decoration: none;}
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
-        th, td { border: 1px solid #30363d; padding: 8px; text-align: center; }
-        th { background: #1f242c; color: var(--neon-blue); }
-        button { background: #007bff; color: white; border: none; padding: 6px 12px; border-radius: 5px; cursor: pointer; font-size: 13px; }
-        button:hover { background: #0056b3; }
-        .btn-danger { background: #ff4d4d; }
-        .btn-danger:hover { background: #cc0000; }
-        .btn-success { background: #00ff9d; color: #000; font-weight: bold; }
-    </style>
+    <title>Gold DCA & Leverage Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-    <div class="dashboard">
-        <div>
-            <h1>Gold Arbitrage AI</h1>
-            {% if is_admin %}
-                <span class="admin-badge">Admin Mode Active</span>
-            {% else %}
-                <a href="/admin" class="viewer-badge">🔒 Admin Login</a>
-            {% endif %}
-            <div style="clear: both;"></div>
+<body class="bg-gray-950 text-gray-100 min-h-screen font-sans">
+
+    <!-- Header -->
+    <header class="border-b border-gray-800 bg-gray-900/80 backdrop-blur sticky top-0 z-50 px-6 py-4 flex justify-between items-center">
+        <div class="flex items-center space-x-3">
+            <div class="p-2 bg-yellow-500/10 rounded-lg border border-yellow-500/30">
+                <svg class="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                </svg>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold text-white">US Gold & DCA Portfolio Dashboard</h1>
+                <p class="text-xs text-gray-400">Live US Gold (${{ us_gold_price }}/oz) | USD/INR: ₹{{ usdinr }}</p>
+            </div>
         </div>
-        
-        <!-- Live Market Card -->
-        <div class="card" style="margin-top: 15px;">
-            <div class="label">US Gold Price (Per Ounce)</div>
-            <div class="value">${{ data.us_price }}</div>
+        <div>
+            <form method="POST" action="/">
+                <button type="submit" class="bg-yellow-500 hover:bg-yellow-600 text-gray-950 font-semibold text-xs px-4 py-2 rounded-lg transition">
+                    ↻ Refresh Live Rates
+                </button>
+            </form>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+        <!-- Top Metric Cards (Jinja2 Rendered) -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
             
-            <div class="label">Calculated Price (Per Gram - INR)</div>
-            <div class="value highlight">₹{{ data.inr_per_gram }}</div>
-            
-            <div class="label">Market Sentiment</div>
-            <div style="font-weight: bold; color: {{ '#00ff9d' if data.sentiment == 'BULLISH' else '#ff4d4d' }};">
-                {{ data.sentiment }}
+            <!-- Card 1: Gold Price -->
+            <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+                <p class="text-xs font-semibold text-gray-400 uppercase">Live Gold Price (Gram)</p>
+                <h3 class="text-2xl font-extrabold text-yellow-400 mt-2">₹{{ "{:,.2f}".format(gold_price_inr) }}</h3>
+                <p class="text-xs text-gray-500 mt-1">${{ us_gold_price }} / oz</p>
+            </div>
+
+            <!-- Card 2: Total Position Value -->
+            <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+                <p class="text-xs font-semibold text-gray-400 uppercase">Total Position Value</p>
+                <h3 class="text-2xl font-extrabold text-white mt-2">₹{{ "{:,.2f}".format(summary.final_position_value) }}</h3>
+                <p class="text-xs text-gray-500 mt-1">Total Grams: {{ summary.total_grams }}g</p>
+            </div>
+
+            <!-- Card 3: Effective Leverage -->
+            <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+                <p class="text-xs font-semibold text-gray-400 uppercase">Effective Leverage</p>
+                <h3 class="text-2xl font-extrabold text-blue-400 mt-2">{{ summary.final_leverage }}x</h3>
+                <p class="text-xs text-gray-500 mt-1">Capital: ₹{{ "{:,.0f}".format(summary.total_capital) }}</p>
+            </div>
+
+            <!-- Card 4: Risk Status -->
+            <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+                <p class="text-xs font-semibold text-gray-400 uppercase">Risk Level</p>
+                <div class="mt-2">
+                    {% if summary.risk_level == 'SAFE' %}
+                        <span class="px-3 py-1 rounded-md text-xs font-bold bg-green-500/20 text-green-400 border border-green-500/30">SAFE</span>
+                    {% elif summary.risk_level == 'MODERATE' %}
+                        <span class="px-3 py-1 rounded-md text-xs font-bold bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">MODERATE</span>
+                    {% else %}
+                        <span class="px-3 py-1 rounded-md text-xs font-bold bg-red-500/20 text-red-400 border border-red-500/30">HIGH RISK</span>
+                    {% endif %}
+                </div>
+                <p class="text-xs text-gray-500 mt-2">Buffer Status</p>
             </div>
         </div>
 
-        <!-- Risk & Accumulation Zone Card -->
-        <div class="buy-zone">
-            <div class="label" style="color: #00ff9d;">Risk Management Zone (20% Drop Setup)</div>
-            <div style="font-size: 20px; font-weight: bold;">₹{{ data.acc_zone }}</div>
-            <div style="font-size: 12px; margin-top: 5px; color: #aaa;">Suggested DCA Accumulation Threshold</div>
+        <!-- Controls Form & Table Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- Parameters Form -->
+            <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 lg:col-span-1">
+                <h2 class="text-lg font-bold text-white mb-4 border-b border-gray-800 pb-2">Portfolio Settings</h2>
+                
+                <form method="POST" action="/" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-300 mb-1">Initial Cash Deposit (₹)</label>
+                        <input type="number" name="initial_capital" value="{{ initial_capital }}" 
+                            class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-yellow-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-medium text-gray-300 mb-1">Monthly Buy Quantity (Grams)</label>
+                        <input type="number" name="monthly_grams" value="{{ monthly_grams }}" step="0.5"
+                            class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-yellow-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-medium text-gray-300 mb-1">Quarterly Extra Cash (₹) <span class="text-yellow-400">(Every 3rd Month)</span></label>
+                        <input type="number" name="quarterly_cash" value="{{ quarterly_cash }}" 
+                            class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-yellow-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-medium text-gray-300 mb-1">Projection Period (Months)</label>
+                        <select name="projection_months" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-yellow-500">
+                            <option value="6" {% if projection_months == 6 %}selected{% endif %}>6 Months</option>
+                            <option value="12" {% if projection_months == 12 %}selected{% endif %}>12 Months (1 Year)</option>
+                            <option value="24" {% if projection_months == 24 %}selected{% endif %}>24 Months (2 Years)</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="w-full bg-yellow-500 hover:bg-yellow-600 text-gray-950 font-bold py-2 px-4 rounded-lg transition mt-4">
+                        Calculate Portfolio
+                    </button>
+                </form>
+            </div>
+
+            <!-- Schedule Table (Dynamic Jinja2 Loop) -->
+            <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 lg:col-span-2">
+                <div class="flex justify-between items-center mb-4 border-b border-gray-800 pb-2">
+                    <h2 class="text-lg font-bold text-white">Month-by-Month Leverage Schedule</h2>
+                    <span class="text-xs text-gray-400">Leverage Reduction Tracker</span>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-gray-950 text-gray-400 uppercase tracking-wider">
+                            <tr>
+                                <th class="py-3 px-3">Month</th>
+                                <th class="py-3 px-3">Buy Grams</th>
+                                <th class="py-3 px-3">Total Grams</th>
+                                <th class="py-3 px-3">Position Value</th>
+                                <th class="py-3 px-3">Extra Cash</th>
+                                <th class="py-3 px-3">Total Capital</th>
+                                <th class="py-3 px-3 text-right">Leverage</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-800 text-gray-300">
+                            {% for row in schedule %}
+                            <tr class="{% if row.is_quarterly %}bg-yellow-500/10 font-medium{% else %}hover:bg-gray-800/50{% endif %}">
+                                <td class="py-2.5 px-3">Month {{ row.month }}</td>
+                                <td class="py-2.5 px-3 text-yellow-400">+{{ row.grams_added }}g</td>
+                                <td class="py-2.5 px-3">{{ row.total_grams }}g</td>
+                                <td class="py-2.5 px-3">₹{{ "{:,.0f}".format(row.position_value) }}</td>
+                                <td class="py-2.5 px-3 text-green-400">
+                                    {% if row.cash_added > 0 %}+₹{{ "{:,.0f}".format(row.cash_added) }}{% else %}-{% endif %}
+                                </td>
+                                <td class="py-2.5 px-3">₹{{ "{:,.0f}".format(row.total_capital) }}</td>
+                                <td class="py-2.5 px-3 text-right font-bold 
+                                    {% if row.leverage > 4 %}text-red-400{% elif row.leverage > 2 %}text-yellow-400{% else %}text-green-400{% endif %}">
+                                    {{ row.leverage }}x
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
         </div>
+    </main>
 
-        <!-- Tracked Entries & Double Lock Security Panel -->
-        <div class="card">
-            <h3>Tracked Entries & Security Locks</h3>
-            <p style="font-size: 12px; color: #8b949e;">
-                Master Lock: <b>{{ 'LOCKED 🔒' if state.master_lock else 'UNLOCKED 🔓' }}</b>
-            </p>
-
-            {% if is_admin %}
-            <!-- Admin Master Lock Toggle Form -->
-            <form method="POST" style="margin-bottom: 15px;">
-                <input type="hidden" name="action" value="toggle_master">
-                <button type="submit" class="{{ 'btn-success' if state.master_lock else 'btn-danger' }}">
-                    {{ 'Unlock Master Control' if state.master_lock else 'Lock Master Control' }}
-                </button>
-            </form>
-            {% endif %}
-
-            <table>
-                <tr>
-                    <th>ID</th>
-                    <th>Price (INR)</th>
-                    <th>Qty</th>
-                    <th>Item Lock</th>
-                    {% if is_admin %}<th>Action</th>{% endif %}
-                </tr>
-                {% for item in state.entries %}
-                <tr>
-                    <td>{{ item.id }}</td>
-                    <td>₹{{ item.price }}</td>
-                    <td>{{ item.qty }}</td>
-                    <td>
-                        {{ '🔒 Locked' if item.locked else '🔓 Open' }}
-                        {% if is_admin %}
-                        <form method="POST" style="display:inline; margin-left: 5px;">
-                            <input type="hidden" name="action" value="toggle_item">
-                            <input type="hidden" name="item_id" value="{{ item.id }}">
-                            <button type="submit" style="padding: 2px 5px; font-size: 10px;">Toggle</button>
-                        </form>
-                        {% endif %}
-                    </td>
-                    {% if is_admin %}
-                    <td>
-                        <!-- Delete allowed ONLY if Master is UNLOCKED and Item is UNLOCKED -->
-                        {% if not state.master_lock and not item.locked %}
-                        <form method="POST">
-                            <input type="hidden" name="action" value="delete_item">
-                            <input type="hidden" name="item_id" value="{{ item.id }}">
-                            <button type="submit" class="btn-danger" style="padding: 2px 6px;">Delete</button>
-                        </form>
-                        {% else %}
-                        <span style="font-size: 11px; color: #8b949e;">Protected</span>
-                        {% endif %}
-                    </td>
-                    {% endif %}
-                </tr>
-                {% endfor %}
-            </table>
-        </div>
-    </div>
 </body>
 </html>
